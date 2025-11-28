@@ -20,18 +20,20 @@ bootloader.bin: bootloader.elf
 	$(OBJCOPY) -O binary $< $@
 
 bootloader.elf: $(BOOTLOADER_OBJETOS)
-	$(LD) -nostdlib -T drivers/virt/linker.ld $^ -o $@
+	$(LD) -EL -nostdlib -T drivers/virt/linker.ld $^ -o $@
 
-kernel.bin: kernel.elf
-	$(OBJCOPY) -O binary $< $@
+# kernel sem elf
+kernel.bin: $(KERNEL_OBJETOS)
+	$(LD) -EL -nostdlib -T drivers/virt/kernel.ld -o kernel.tmp $^
+	$(OBJCOPY) -O binary kernel.tmp $@
+	rm -f kernel.tmp
 	@echo "=== kernel info ==="
 	@echo "Tamanho do kernel:"
 	@stat -c%s kernel.bin
 	@echo "Primeiros bytes (hex):"
 	@od -x kernel.bin | head -3
-
-kernel.elf: $(KERNEL_OBJETOS)
-	$(LD) -nostdlib -T drivers/virt/kernel.ld $^ -o $@
+	@echo "Primeiros bytes (hex - bytes):"
+	@od -t x1 kernel.bin | head -5
 
 disco.img: bootloader.bin kernel.bin
 	@echo "=== criando disco ==="
@@ -44,24 +46,25 @@ disco.img: bootloader.bin kernel.bin
 	@dd if=disco.img bs=512 skip=64 count=1 2>/dev/null | od -x | head -3
 
 %.o: %.asm
-	$(AS) $< -o $@
+	$(AS) -EL $< -o $@
 
 limpar:
 	rm -f $(BOOTLOADER_OBJETOS) $(KERNEL_OBJETOS) \
 		bootloader.elf bootloader.bin \
-		kernel.elf kernel.bin \
+		kernel.bin kernel.tmp \
 		disco.img
 
 qemu: disco.img
 	qemu-system-aarch64 \
-		-machine virt \
-		-cpu cortex-a53 \
-		-m 128M \
-		-device loader,file=bootloader.bin,addr=0x40100000,cpu-num=0 \
-		-drive if=none,file=disco.img,format=raw,id=hd0 \
-		-device virtio-blk-device,drive=hd0 \
-		-serial stdio \
-		-display none \
-		-d in_asm -D qemu.log
+	-machine virt,virtualization=on \
+	-cpu cortex-a53 \
+	-m 128M \
+	-device loader,file=bootloader.bin,addr=0x40100000,cpu-num=0 \
+	-drive if=none,file=disco.img,format=raw,id=hd0 \
+	-device virtio-blk-device,drive=hd0 \
+	-global virtio-mmio.force-legacy=false \
+	-serial stdio \
+	-display none \
+	-d in_asm -D qemu.log
 
 .PHONY: limpar qemu

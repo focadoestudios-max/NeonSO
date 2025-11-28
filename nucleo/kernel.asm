@@ -3,6 +3,7 @@
 
 .section .text
 _inicio:
+    mov x30, xzr
     // zerar a sessão BSS
     ldr x0, = _bss_inicio
     ldr x1, = _bss_fim 
@@ -31,4 +32,4 @@ fim_zerar_bss:
     b 1b
 
 .section .rodata
-msg_kernel: .asciz "[Kernel]: Executando! Sistema carregado com sucesso!\r\n"
+msg_kernel: .asciz "[Kernel]: Executando, Sistema carregado com sucesso\r\n"

@@ -11,7 +11,6 @@ uart_base_real: .quad 0
 .align 4
 hex_buffer: .space 17
     .byte 0
-    
 .align 8
 dec_buffer: .space 21
 

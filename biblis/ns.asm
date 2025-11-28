@@ -5,6 +5,8 @@
 ns_abrir:
     ldr x0, = msg_abrindo
     bl _escrever_tex
+    ldr x0, = comando
+    bl _escrever_tex
     b ns_loop
 ns_loop:
     bl _obter_car
@@ -41,6 +43,6 @@ nova_linha:
     b nova_linha
 .section .rodata
 comando: .asciz "~ $ "
-msg_abrindo: .asciz "[Neon Script]: abrindo sessão..."
+msg_abrindo: .asciz "[Neon Script]: abrindo sessão...\n"
 msg_ajuda: .asciz "[Comandos]:\ns: status do kernel\n"
 msg_status: .asciz "[Kernel]: Neon 0.0.1\n[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.1\n"

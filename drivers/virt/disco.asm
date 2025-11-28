@@ -8,6 +8,7 @@ DRIVER_RECURSOS = 0x20
 QUEUE_SEL = 0x30
 QUEUE_NUM = 0x38
 QUEUE_PRONTA = 0x44
+QUEUE_NOTIFICAR = 0x50
 INTERRUPCAO_STATUS = 0x60
 STATUS = 0x70
 QUEUE_DESC_BAIXA = 0x80
@@ -180,7 +181,7 @@ _inicia_dispositivo:
     // x19 tem o endereço base do dispositivo(0x0a003e00)
     bl _verificar_registradores
     
-    ldr x0, =msg_iniciando2
+    ldr x0, = msg_iniciando2
     bl _escrever_tex
     
     // 1. reinicia ambiente
@@ -189,13 +190,13 @@ _inicia_dispositivo:
     mov x0, 0
     str x0, [x19, STATUS]
 
-    // 2. define ACKNOWLEDGE
+    // 2. define ACKNOWLEDGE(status = 1)
     ldr x0, = msg_def_ack
     bl _escrever_tex
     mov x0, 1
     str x0, [x19, STATUS]
 
-    // 3. define driver
+    // 3. define driver(status = 3)
     ldr x0, = msg_def_driver
     bl _escrever_tex
     mov x0, 3
@@ -207,7 +208,7 @@ _inicia_dispositivo:
     mov x0, 0
     str x0, [x19, DRIVER_RECURSOS]
 
-    // 5. define RECURSOS_OK
+    // 5. define RECURSOS_OK(status = 11)
     ldr x0, = msg_def_recursos_ok
     bl _escrever_tex
     mov x0, 11 
@@ -226,14 +227,13 @@ _inicia_dispositivo:
     str x0, [x19, QUEUE_NUM]
 
     // 6.2. configura endereços da desc_tabela, disponivel_anel e usado_anel
-    // descritores(endereço 64 bits)
+    
+    // configurando tabela de descritores(usando label)
     ldr x0, = msg_config_descritores
     bl _escrever_tex
-    // carrega endereço 0x40101000
-    movz x0, 0x1000, lsl 0  // x0 = 0x0000000000001000
-    movk x0, 0x4010, lsl 16 // x0 = 0x0000000040101000
+    ldr x0, = desc_tabela // carrega o endereço real do linker
     
-    mov x2, x0 // x2 armazena o endereço(0x40101000)
+    mov x2, x0 // salva o endereço para debug/restauração
     
     // debug: mostra endereço da desc_tabela
     mov x1, x2 // x1 = endereço correto
@@ -245,21 +245,16 @@ _inicia_dispositivo:
     bl _escrever_tex
     mov x0, x2 // restaura o endereço correto de desc_tabela(de x2)
     
-    // x1 = parte HIGH (X0 >> 32). w1 tem os 32 bits superiores
-    lsr x1, x0, 32
-    // tem a parte BAIXA do endereço(w0)
+    lsr x1, x0, 32 // x1 = parte ALTA
     str w0, [x19, QUEUE_DESC_BAIXA]
-    // Armazena a parte ALTA do endereço(w1)
     str w1, [x19, VIRTIO_QUEUE_DESC_ALTA]
 
-    // driver anel(disponivel anel)
+    // configurando driver anel(disponivel anel)
     ldr x0, = msg_config_disponivel_anel
     bl _escrever_tex
-    // carrega endereço 0x40102000
-    movz x0, 0x2000, lsl 0  // x0 = 0x0000000000002000
-    movk x0, 0x4010, lsl 16 // x0 = 0x0000000040102000
+    ldr x0, = disponivel_anel // carrega o endereço real do linker
 
-    mov x2, x0 // x2 tem o endereço
+    mov x2, x0 
     
     // debug: mostra endereço do disponivel_anel
     mov x1, x2
@@ -269,20 +264,18 @@ _inicia_dispositivo:
     bl _escrever_hex
     ldr x0, = msg_nova_linha
     bl _escrever_tex
-    mov x0, x2 // restaura o endereço de disponivel_anel(de x2)
+    mov x0, x2
     
     lsr x1, x0, 32
-    str w0, [x19, QUEUE_DRIVER_BAIXA] // Note: use w0 (32-bit store)
-    str w1, [x19, QUEUE_DRIVER_ALTA] // Note: use w1 (32-bit store)
+    str w0, [x19, QUEUE_DRIVER_BAIXA]
+    str w1, [x19, QUEUE_DRIVER_ALTA]
 
-    // ambiente anel(usado anel)
+    // configurando ambiente anel(usado anel)
     ldr x0, = msg_config_usado_anel
     bl _escrever_tex
-    // carrega endereço 0x40103000
-    movz x0, 0x3000, lsl 0  // x0 = 0x0000000000003000
-    movk x0, 0x4010, lsl 16 // x0 = 0x0000000040103000
+    ldr x0, = usado_anel // carrega o endereço real do linker
 
-    mov x2, x0 // x2 tem o endereço
+    mov x2, x0 
     
     // debug: mostra endereço do usado_anel
     mov x1, x2
@@ -292,7 +285,7 @@ _inicia_dispositivo:
     bl _escrever_hex
     ldr x0, = msg_nova_linha
     bl _escrever_tex
-    mov x0, x2 // restaura o endereço de usado_anel(de x2)
+    mov x0, x2 
     
     lsr x1, x0, 32
     str w0, [x19, QUEUE_AMBIENTE_BAIXA]
@@ -329,10 +322,10 @@ _ler_setores:
     stp x23, x24, [sp, 48]
     stp x25, x26, [sp, 64]
 
-    mov x19, x0  // setor
-    mov x20, x1  // conta
-    mov x21, x2  // buffer
-    mov x23, x3  // base_endereco
+    mov x19, x0 // setor
+    mov x20, x1 // conta
+    mov x21, x2 // buffer(destino: 0x40200000)
+    mov x23, x3 // base_endereco
 
 ler_loop:
     cbz x20, ler_sucesso
@@ -342,8 +335,15 @@ ler_loop:
     bl _escrever_tex
     mov x0, x19
     bl _escrever_decimal
-    ldr x0, =msg_nova_linha
+    ldr x0, = msg_nova_linha
     bl _escrever_tex
+
+    // 0. limpa o status byte com um valor "sujo"(0xFF)
+    // se ler 0 no final, foi o dispositivo
+    // se ler 0xFF, o dispositivo não tocou nele
+    ldr x0, = status_byte
+    mov w1, 0xFF
+    strb w1, [x0]
 
     // 1. prepara blk_req
     ldr x0, = blk_req
@@ -351,12 +351,12 @@ ler_loop:
     str w1, [x0]
     mov w1, 0
     str w1, [x0, 4]
-    str x19, [x0, 8]
+    str x19, [x0, 8] // setor
 
-    // 2. zera desc_tabela antes de reconfigurar
+    // 2. zera desc_tabela
     ldr x0, = desc_tabela
     mov x1, x0
-    mov w2, 16 * 8 // 8 descritores * 16 bytes
+    mov w2, 16 * 8
 1:
     str xzr, [x1], 8
     subs w2, w2, 8
@@ -365,7 +365,7 @@ ler_loop:
     // 3. configura descritores
     ldr x0, = desc_tabela
     
-    // descritor 0
+    // descritor 0: blk_req
     ldr x1, = blk_req
     str x1, [x0]
     mov w1, 16
@@ -375,10 +375,10 @@ ler_loop:
     mov w1, 1
     strh w1, [x0, 14]
 
-    // descritor 1  
-    ldr x0, = desc_tabela // reinicia x0 denovo
+    // descritor 1: buffer de leitura
+    ldr x0, = desc_tabela 
     add x0, x0, 16
-    str x21, [x0]
+    str x21, [x0] 
     mov w1, 512
     str w1, [x0, 8]
     mov w1, DESC_F_GRAVAR | DESC_F_PROXIMO
@@ -386,8 +386,8 @@ ler_loop:
     mov w1, 2
     strh w1, [x0, 14]
 
-    // descritor 2
-    ldr x0, = desc_tabela // reinicia x0 denovo  
+    // descritor 2: status byte
+    ldr x0, = desc_tabela 
     add x0, x0, 32
     ldr x1, = status_byte
     str x1, [x0]
@@ -396,17 +396,74 @@ ler_loop:
     mov w1, DESC_F_GRAVAR
     strh w1, [x0, 12]
     
-    bl _verificar_descritores
+    // barreira: garante que descritores foram escritos antes de atualizar o anel
+    dmb sy
+
+    // 4. atualizar anel disponivel
+    ldr x4, = disponivel_anel
+    ldrh w5, [x4, 2] // idc atual
+    
+    and w6, w5, 7      
+    lsl w6, w6, 1      
+    add x6, x6, 4      
+    add x6, x4, x6     
+    
+    mov w7, 0 // cabeca indice = 0
+    strh w7, [x6]
+
+    // barreira: garante que o indice foi escrito no array anel[] antes de atualizar o idc global
+    dmb sy
+
+    // 5. atualiza disponivel->idc
+    add w5, w5, 1
+    strh w5, [x4, 2]
+    
+    // barreira: garante que tudo acima ta na RAM antes de notificar
+    dmb sy
+
+    // 6. notifica
+    ldr x0, = msg_notificando
+    bl _escrever_tex
+    mov w0, 0
+    str w0, [x23, QUEUE_NOTIFICAR]
+
+    // 7. loop de espera
+    // esperamos ate que usado->idc(w7) seja igual a disponivel->idc(w5)
+    // w5 ja contem o valor alvo(o valor que acabou de escrever)
+    mov x9, 0x100000 // contador grande
+2:
+    // delay pequeno pra não saturar o barramento
+    nop
+    nop
+    
+    ldr x6, = usado_anel
+    ldrh w7, [x6, 2] // usado idc(volatile)
+    
+    // se w7 == w5, o dispositivo alcançou nosso índice = sucesso
+    cmp w7, w5
+    b.eq ler_concluido
+    
+    // checagem de timeout
+    sub x9, x9, 1
+    cbnz x9, 2b // se não zerou, continua loop
+    
+    // se chegou aqui, deu timeout
+    b ler_timeout
 ler_concluido:
+    // barreira: garante que a leitura do buffer não aconteça antes do dispositivo terminar
+    dmb sy
+
     // limpar interrupção
     mov w0, 1
     str w0, [x23, INTERRUPCAO_STATUS]
 
-    // 6. verifica status do bloco
+    // 8. verifica status do bloco
     ldr x0, = status_byte
     ldrb w0, [x0]
-    cbnz w0, ler_erro
-
+    
+    // se for 0, sucesso
+    // se for 0xFF(nosso valor inicial), o dispositivo nem tocou
+    cbnz w0, ler_erro 
     // proximo setor
     add x19, x19, 1
     add x21, x21, 512
@@ -421,10 +478,18 @@ ler_timeout:
 ler_erro:
     ldr x0, = msg_erro_status
     bl _escrever_tex
+    // debug: imprime qual foi o codigo de erro
+    ldr x0, = status_byte
+    ldrb w0, [x0]
+    bl _escrever_hex
+    ldr x0, = msg_nova_linha
+    bl _escrever_tex
     mov x0, 1
     b ler_fim
+
 ler_sucesso:
     mov x0, 0
+
 ler_fim:
     ldp x25, x26, [sp, 64]
     ldp x23, x24, [sp, 48]
