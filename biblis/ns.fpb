@@ -9,16 +9,24 @@
 int texcmp(car* p1, car* p2);
 car _obter_car();
 vazio ns_loop();
+vazio _iniciar_video();
+vazio _limpar_tela(byte cor);
 
 vazio ns_abrir() {
+    _iniciar_video();
     escrever("[FPB]: teste de FPB funcionando\n");
     escrever("[Neon Script]: abrindo sessão...\n");
     escrever("~ $ ");
-    
+    // inicia o buffer de comando
+    por(int i = 0; i < 64; i++) {
+        comando[i] = (car)0x00;
+    }
     ns_loop();
 }
 
 vazio ns_loop() {
+    // cor Azul = 0xFF000080
+    _limpar_tela(0xFF000080);
     car c = _obter_car();
     // processa apenas caracteres visiveis
     se(c == 0x0D) {
@@ -27,8 +35,9 @@ vazio ns_loop() {
         se(texcmp(comando, status) == 1) {
             escrever("[Kernel]: Neon 0.0.1\n");
             escrever("[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.1\n");
+            escrever("[Pilha]: 16 KB\n");
         } senao se(texcmp(comando, ajuda) == 1) {
-            escrever("[Comandos]:\ns: status do kernel\n");
+            escrever("[Comandos]:\n-status: status do kernel\n");
         } senao se(conta > 0) {
             escrever("Erro: '", comando, "' não reconhecido\n");
         }
