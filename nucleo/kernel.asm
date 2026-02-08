@@ -28,9 +28,7 @@ fim_zerar_bss:
     bl _escrever_tex
     
     bl _iniciar_video
-    mov w0, 0xFF00FF00
     
-    bl _limpar_tela
     bl ns_abrir
 
     // loop infinito

@@ -353,7 +353,7 @@ _att_tela:
     ret
 
 _limpar_tela:
-    // x0 = cor no formato BGRA (0xAARRGGBB)
+    // x0 = cor no formato BGRA(0xAARRGGBB)
     stp x29, x30, [sp, -16]!
     
     // salva a cor em w19

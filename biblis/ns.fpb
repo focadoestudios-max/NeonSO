@@ -1,15 +1,18 @@
 // biblis/ns.fpb
-#incluir "biblis/texs.asm";
+#incluir "biblis/texs.fpb";
 #global ns_abrir();
+/*
 #global car* status = "-status";
 #global car* ajuda = "-ajuda";
+*/
 #global car[64] comando;
 #global int conta = 0;
+#global int cor = 0xFFFF0000;
 
-int texcmp(car* p1, car* p2);
 car _obter_car();
 vazio ns_loop();
-vazio _iniciar_video();
+vazio mudar_cor();
+vazio _att_tela();
 vazio _limpar_tela(byte cor);
 
 vazio ns_abrir() {
@@ -24,32 +27,61 @@ vazio ns_abrir() {
 }
 
 vazio ns_loop() {
-    // azul = 0xFF0000FF
-    // verde = 0xFF00FF00
     car c = _obter_car();
-    // processa apenas caracteres visiveis
-    se(c == 0x0D) {
-        escrever("\n");
-        // verifica comandos
-        se(texcmp(comando, status) == 1) {
+    
+    // pra apagar:
+    se(c == 0x08 || c == 0x7F) { 
+        se(conta > 0) {
+            conta--;
+            comando[conta] = '\0';
+            
+            // sequencia pra apagar visualmente no terminal:
+            // retroceder, espaço(apaga), retroceder
+            escrever((car)0x08, ' ', (car)0x08);
+        }
+    } senao se(c == 0x0D) { // processa a tecla
+        escrever('\n');
+        se(texcmp(comando, "-status")) {
             escrever("[Kernel]: Neon 0.0.1\n");
-            escrever("[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.1\n");
+            escrever("[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.2\n");
             escrever("[Pilha]: 16 KB\n");
-        } senao se(texcmp(comando, ajuda) == 1) {
+        } senao se(texcmp(comando, "-ajuda")) {
             escrever("[Comandos]:\n-status: status do kernel\n");
+        } senao se(texcmp(comando, "-cor")) {
+            mudar_cor();
         } senao se(conta > 0) {
             escrever("Erro: '", comando, "' não reconhecido\n");
         }
-        // reinicia
-        por(int i = 0; i < conta; i++) {
-            comando[i] = (car)0x00;
+        // reinicia o buffer
+        por(int i = 0; i < 64; i++) {
+            comando[i] = '\0';
         }
         conta = 0;
         escrever("~ $ ");
-    } senao se(c >= 0x20 && c <= 0x7E) {  // caracteres visiveis
-        escrever(c);
-        comando[conta] = c;
-        conta++;
+    } 
+    // caracteres visiveis
+    senao se(c >= 0x20 && c <= 0x7E) {
+        se(conta < 63) { // proteção pra não estourar o vetor
+            escrever(c);
+            comando[conta] = c;
+            conta++;
+        }
     }
+    
     ns_loop();
+}
+
+vazio mudar_cor() {
+    se(cor == 0xFFFF0000) {
+        cor = 0xFF00FF00; // verde
+        escrever("[Neon Script]: tela verde\n");
+    } senao se(cor == 0xFF00FF00) {
+        cor = 0xFF0000FF; // azul
+        escrever("[Neon Script]: tela azul\n");
+    } senao {
+        cor = 0xFFFF0000; // vermelho
+        escrever("[Neon Script]: tela vermelha\n");
+    }
+    _limpar_tela(cor);
+    _att_tela();
 }
