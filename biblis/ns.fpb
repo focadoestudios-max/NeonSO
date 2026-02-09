@@ -11,8 +11,8 @@ car _obter_car();
 vazio ns_loop();
 vazio mudar_cor();
 vazio _att_tela();
-vazio _render_retangulo(int x, int y, int largura, int altura, byte cor);
-vazio _limpar_tela(byte cor);
+vazio _render_retangulo(int x, int y, int largura, int altura, int cor);
+vazio _limpar_tela(int cor);
 
 vazio ns_abrir() {
     escrever("[FPB]: teste de FPB funcionando\n");

@@ -2,7 +2,7 @@
 .global _iniciar_video
 .global _escrever_pixel
 .global _limpar_tela
-.global _desenhar_retangulo
+.global _render_retangulo
 .global _att_tela
 
 // constantes VirtIO GPU(MMIO)
