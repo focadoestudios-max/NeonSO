@@ -3,57 +3,6 @@
 // inicio de biblis/texs.fpb
 
 // inicio de biblis/texs.asm
-// fn: [textam]
-// x0: texto, w0: retorno
-.align 2
-textam:
-    mov x1, x0
-1:
-    ldrb w2, [x1], 1
-    cbnz w2, 1b
-    sub x0, x1, x0
-    sub x0, x0, 1
-    ret
-// fim: [textam]
-// fn: [subscar]
-// x0: texto, w1: car a substituir, w2: novo car
-.align 2
-subscar:
-    mov x3, x0 // x3 = ponteiro para iterar
-1: // loop
-    ldrb w4, [x3] // carrega caractere atual
-    cbz w4, 3f // se zero, fim do texto
-    cmp w4, w1 // e o caractere alvo?
-    b.ne 2f
-    
-    strb w2, [x3] // substitui pelo novo caractere
-2: // proximo
-    add x3, x3, 1 // avança pra o próximo caractere
-    b 1b
-3: // retorna
-    ret
-// fim: [subscar]
-// fn: [texcar]
-// x0: ponteiro, w1: caractere
-.align 2
-texcar:
-    mov x2, x0 // x2 = ponteiro para iterar
-    mov w3, w1 // w3 = caractere procurado
-1: // loop
-    ldrb w4, [x2] // carrega byte atual
-    cbz w4, 3f // se zero, fim do texto
-    cmp w4, w3 // compara com caractere buscado
-    b.eq 2f // se igual, encontrou
-    add x2, x2, 1 // próximo caractere
-    b 1b
-2: // achou
-    sub x0, x2, x0 // calcula posição(endereço atual - início)
-    b 4f
-3: // não achou
-    mov x0, -1 // retorna -1 se não encontrou
-4: // retorna
-    ret
-// fim: [texcar]
 // fn: [texcmp]
 // x0: ponteiro para o texto 1
 // x1: ponteiro para o texto 2
@@ -88,75 +37,6 @@ texcmp:
 // fim: [texcmp]
 // fim de biblis/texs.asm
 
-// fn: [texcp] (vars: 16, total: 160)
-.align 2
-texcp:
-  sub sp, sp, 160
-  stp x29, x30, [sp, 144]
-  add x29, sp, 144
-  str x0, [x29, -16]  // param arr
-  str x1, [x29, -24]  // param p
-  mov w0, 0
-  mov w19, w0
-  str w0, [x29, -48]
-.B1:
-  mov w0, 1
-  mov w19, w0
-  mov w0, w19
-  cmp w0, 0
-  beq .B2
-  ldr w0, [x29, -48]
-  mov w1, w0
-  str w1, [sp, -16]!
-  ldr w0, [x29, -48]
-  str w0, [sp, -16]!
-  mov w0, 0
-  ldr w1, [sp], 16
-  mov w2, 1
-  mul w1, w1, w2
-  add w0, w0, w1
-  ldr x2, [x29, -24]
-  add x2, x2, x0
-  ldrb w0, [x2]
-  ldr w1, [sp], 16
-  ldr x2, [x29, -16]
-  add x2, x2, x1
-  strb w0, [x2]
-  ldr w0, [x29, -48]
-  str w0, [sp, -16]!
-  mov w0, 0
-  ldr w1, [sp], 16
-  mov w2, 1
-  mul w1, w1, w2
-  add w0, w0, w1
-  ldr x2, [x29, -24]
-  add x2, x2, x0
-  ldrb w0, [x2]
-  mov w19, w0
-  mov w0, 0
-  mov w1, w19
-  cmp w1, w0
-  cset w0, eq
-  mov w19, w0
-  mov w0, w19
-  cmp w0, 0
-  beq .B3
-  b .B2
-  b .B4
-.B3:
-.B4:
-  ldr w0, [x29, -48]
-  add w0, w0, 1
-  str w0, [x29, -48]
-  b .B1
-.B2:
-  b 1f
-// epilogo
-1:
-  ldp x29, x30, [sp, 144]
-  add sp, sp, 160
-  ret
-// fim: [texcp]
 
 // fim de biblis/texs.fpb
 
@@ -167,21 +47,13 @@ ns_abrir:
   sub sp, sp, 144
   stp x29, x30, [sp, 128]
   add x29, sp, 128
-  ldr x0, = .tex_0
+  ldr x0, = .tex_comb_0
   bl _escrever_tex
-  ldr x0, = .tex_1
+  ldr x0, = .tex_comb_1
   bl _escrever_tex
-  ldr x0, = .tex_2
+  ldr x0, = .tex_comb_2
   bl _escrever_tex
-  ldr x0, = .tex_3
-  bl _escrever_tex
-  ldr x0, = .tex_4
-  bl _escrever_tex
-  ldr x0, = .tex_5
-  bl _escrever_tex
-  ldr x0, = .tex_6
-  bl _escrever_tex
-  ldr x0, = .tex_7
+  ldr x0, = .tex_comb_3
   bl _escrever_tex
   mov w0, 0
   mov w19, w0
@@ -313,9 +185,7 @@ ns_loop:
   mov w0, w19
   cmp w0, 0
   beq .B13
-  ldr x0, = .tex_9
-  bl _escrever_tex
-  ldr x0, = .tex_10
+  ldr x0, = .tex_comb_4
   bl _escrever_tex
   ldr x0, = .tex_11
   bl _escrever_tex
@@ -334,13 +204,9 @@ ns_loop:
   mov w0, w19
   cmp w0, 0
   beq .B15
-  ldr x0, = .tex_13
+  ldr x0, = .tex_comb_5
   bl _escrever_tex
-  ldr x0, = .tex_14
-  bl _escrever_tex
-  ldr x0, = .tex_15
-  bl _escrever_tex
-  ldr x0, = .tex_16
+  ldr x0, = .tex_comb_6
   bl _escrever_tex
   b .B16
 .B15:
@@ -610,23 +476,12 @@ mudar_cor:
 // fim: [mudar_cor]
 .section .rodata
 .align 2
-.tex_0: .asciz "[FPB]: teste de FPB funcionando\n"
 .tex_1: .asciz "[Neon Script]: abrindo sess\303\243o...\n"
 .tex_2: .asciz "[Neon Script]: sess\303\243o iniciada\n\n"
-.tex_3: .asciz "[NEON]: Inicializado com sucesso\n"
-.tex_4: .asciz "[Direitos Autorais]: Foca-do Est\303\272dios\n"
-.tex_5: .asciz "[Autor]: Shiniga-OP\n\n"
-.tex_6: .asciz "Digite \"-ajuda\" para ver todos os comandos!\n\n"
 .tex_7: .asciz "~ $ "
 .tex_8: .asciz "-status"
-.tex_9: .asciz "[Kernel]: Neon 0.0.1\n"
-.tex_10: .asciz "[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.2\n"
 .tex_11: .asciz "[Pilha]: 16 KB\n"
 .tex_12: .asciz "-ajuda"
-.tex_13: .asciz "[Comandos]:\n"
-.tex_14: .asciz "-status: status do kernel\n"
-.tex_15: .asciz "-cor: muda a cor da tela (azul, vermelho e verde)\n"
-.tex_16: .asciz "-render: desenha um retangulo vermelho na tela\n"
 .tex_17: .asciz "-cor"
 .tex_18: .asciz "-render"
 .tex_19: .asciz "Erro: '"
@@ -647,3 +502,13 @@ global_conta:
   .word 0
 global_cor:
   .word -65536
+
+.section .rodata
+.align 2
+.tex_comb_0: .asciz "[FPB]: teste de FPB funcionando\n[Neon Script]: abrindo sess\303\243o...\n"
+.tex_comb_1: .asciz "[Neon Script]: sess\303\243o iniciada\n\n[NEON]: Inicializado com sucesso\n"
+.tex_comb_2: .asciz "[Direitos Autorais]: Foca-do Est\303\272dios\n[Autor]: Shiniga-OP\n\n"
+.tex_comb_3: .asciz "Digite \"-ajuda\" para ver todos os comandos!\n\n~ $ "
+.tex_comb_4: .asciz "[Kernel]: Neon 0.0.1\n[Arquitetura]: ARM64\n[Bibliotecas]: Neon Script 0.0.2\n"
+.tex_comb_5: .asciz "[Comandos]:\n-status: status do kernel\n"
+.tex_comb_6: .asciz "-cor: muda a cor da tela (azul, vermelho e verde)\n-render: desenha um retangulo vermelho na tela\n"
