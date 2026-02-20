@@ -20,6 +20,7 @@ BOOTLOADER_OBJETOS=$(BOOTLOADER_CODIGOS:.asm=.o)
 
 KERNEL_CODIGOS= \
 	nucleo/kernel.asm \
+	nucleo/excecoes.asm \
 	drivers/virt/terminal.asm \
 	drivers/virt/video.asm \
 	biblis/ns.asm

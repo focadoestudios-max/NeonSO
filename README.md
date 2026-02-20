@@ -1,6 +1,10 @@
 # Neon
 meu bootloader + kernel feito em Assembly ARM64 e FPB.
 
+## feito:
+* vetores de exceção configurados.
+* MMU ativa.
+
 ## drivers:
 1. Terminal virt UART.
 2. Disco VirtIO.

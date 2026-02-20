@@ -4,6 +4,7 @@
 .global _escrever_car
 .global _escrever_hex
 .global _escrever_decimal
+.global _escrever_hex64
 .global _obter_car
 .global _config_uart
 
@@ -51,8 +52,7 @@ _escrever_tex:
     stp x0, x1, [sp, -16]!
     stp x2, x4, [sp, -16]!
     
-    mov x1, 0x09000000      // UART base hardcoded, não usa variável!
-    
+    ldr x1, = UART_BASE
 1:
     ldrb w2, [x0], 1
     cbz w2, 2f
@@ -146,3 +146,43 @@ _escrever_decimal:
     ldp x29, x30, [sp], 48
     ret
     
+// escreve um número hexadecimal 64 bits
+// x0 = valor a imprimir
+// usa _escrever_tex para cada byte
+.align 3
+_escrever_hex64:
+    stp x29, x30, [sp, -48]!
+    mov x29, sp
+    str x19, [sp, 16]
+    str x20, [sp, 24]
+    str x21, [sp, 32]
+
+    mov x19, x0 // valor
+    mov x20, 60 // shift inicial(bits 63..0, de 4 em 4)
+    adr x21, _hex_cars
+
+    ldr x0, = _hex_Ox
+    bl  _escrever_tex
+
+_hex_loop:
+    lsr  x1, x19, x20 // desloca pra pegar mordidela atual
+    and  x1, x1, 0xF // isola o mordidela
+    ldrb w0, [x21, x1] // busca o caractere hex
+    // imprime o caractere via UART diretamente
+    bl _escrever_car
+    subs x20, x20, 4
+    b.ge _hex_loop
+
+    mov x0, '\n'
+    bl  _escrever_tex
+
+    ldr x19, [sp, 16]
+    ldr x20, [sp, 24]
+    ldr x21, [sp, 32]
+    ldp x29, x30, [sp], 48
+    ret
+    
+.section .rodata
+// tabela de caracteres hex
+_hex_cars: .ascii "0123456789ABCDEF"
+_hex_Ox: .asciz "0x"
