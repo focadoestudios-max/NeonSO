@@ -1,0 +1,3 @@
+# ignore os logs:
+qemu.log
+debug.log
