@@ -62,7 +62,7 @@ vazio ns_loop() {
             _render_retangulo(100, 100, 400, 200, 0xFFFF0000);
             _att_tela();
         } senao se(conta > 0) {
-            escrever("Erro: '", comando, "' não reconhecido\n");
+            escrever("Erro: \"", comando, "\" não reconhecido\n");
         }
         // reinicia o buffer
         por(int i = 0; i < 64; i++) {

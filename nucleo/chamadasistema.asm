@@ -51,7 +51,7 @@ _despachador_saida:
     ret
 
 /* 64: escrever
-* x0 = fd
+* x0 = lugar onde escrever
 * x1 = buf
 * x2 = quantidade de bytes
 * retorna: bytes escritos ou -EBADF
@@ -78,7 +78,7 @@ _chamadasistema_escrever:
     b _despachador_saida
 
 /* 63: ler
-* x0 = fd (0 = UART)
+* x0 = fd(0 = UART)
 * x1 = buf
 * x2 = quantidade maxima
 * retorna: bytes lidos ou -EBADF
@@ -90,7 +90,7 @@ _chamadasistema_ler:
     stp x19, x20, [sp, 16]
     stp x21, x22, [sp, 32]
 
-    // so suporta fd 0 (stdin)
+    // so suporta fd 0(entrada de texto)
     cmp x0, 0
     b.ne _ler_erro_fd
 
@@ -130,12 +130,21 @@ _chamadasistema_sair:
     ldr x0, =msg_sistema_saindo
     bl _escrever_tex
 
-    ldr x0, =_svc_retorno_el1
-    ldr x0, [x0]
-    str x0, [sp, 264] // ELR_EL1(+16 pelo frame do despachador)
+    /*
+    * modifica ELR_EL1 e SPSR_EL1 diretamente nos registradores
+    * restaurar_contexto vai recarregar da pilha, então precisa
+    * atualizar a pilha nas posições corretas(relativo ao frame do salvar_contexto)
+    * SP aqui = base_frame - 16(pelo frame do despachador)
+    * ELR ta em base_frame+248, logo sp+248+16 = sp+264 <- mas isso é ESR
+    */
+    // volta pro frame do salvar_contexto subindo 16
+    add x1, sp, 16 // x1 aponta pro inicio do frame do salvar_contexto
+
+    ldr x0, = _svc_retorno_el1
+    str x0, [x1, 248] // escreve ELR_EL1 na posição correta
 
     mov x0, 0x3C5
-    str x0, [sp, 272] // SPSR_EL1
+    str x0, [x1, 256] // escreve SPSR_EL1 na posição correta
 
     mov x0, 0
     b _despachador_saida
@@ -146,3 +155,4 @@ msg_sistema_saindo:
     .asciz "[Sistema]: Processo encerrado via chamada de sistema\r\n"
 msg_sistema_naoimpl:
     .asciz "[Sistema]: Chamada de sistema não implementada\r\n"
+    

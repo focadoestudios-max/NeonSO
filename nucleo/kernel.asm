@@ -1,5 +1,12 @@
 // nucleo/kernel.asm
 .global _inicio
+.global _svc_retorno_el1
+
+.section .bss
+.align 4
+_pilha_el0:
+    .space 4096 // 4KB pra EL0
+_pilha_el0_fim:
 
 .section .text.kernel
 _inicio:
@@ -22,8 +29,6 @@ fim_zerar_bss:
     
     // configura UART
     bl _config_uart
-
-    bl ligar_mmu
     
     // configura vetores de exceção
     bl _config_excecao
@@ -32,8 +37,21 @@ fim_zerar_bss:
     ldr x0, = msg_kernel
     bl _escrever_tex
     
-    // testa chamadas de sistema(desce pra EL0 e volta)
-    bl _testar_svc
+    // Configura a pilha de EL0 (SP_EL0)
+    // Usa uma região separada da pilha do kernel
+    ldr x0, =_pilha_el0_fim
+    msr sp_el0, x0
+
+    // ELR_EL1 = endereço onde EL0 vai começar
+    ldr x0, =_testar_svc
+    msr elr_el1, x0
+
+    // SPSR_EL1 = EL0t, interrupções habilitadas
+    // M[3:0]=0000 (EL0t), F=0, I=0, A=0, D=0
+    mov x0, 0x0
+    msr spsr_el1, x0
+
+    eret  // salta para _testar_svc em EL0
     
     bl _iniciar_video
     
@@ -43,86 +61,8 @@ fim_zerar_bss:
 1: 
     wfe
     b 1b
-
-// === liga MMU em EL1, identidade 1:1 ===
-// tabela L1
-.section .bss
-.align 12
-tt_l1:
-    .skip 4096
-
-.section .text
-.align 3
-ligar_mmu:
-    // prologo: salva o endereço de retorno(x30) na pilha
-    stp x29, x30, [sp, #-16]!
-    mov x29, sp
-
-    // preparar endereço da tabela
-    adrp x0, tt_l1
-    add x0, x0, :lo12:tt_l1
-
-    // limpar a tabela (4KB)
-    mov x1, xzr
-    mov x2, 512
-limpar_mmu_loop:
-    str x1, [x0], 8
-    subs x2, x2, 1
-    b.ne limpar_mmu_loop
-
-    // reinicia x0 pro inicio da tabela
-    adrp x0, tt_l1
-    add x0, x0, :lo12:tt_l1
-
-    // mapea perifericos(0x00000000 - 0x3FFFFFFF) -> ambiente nGnRE(Attr 1)
-    mov x1, 0x00000000
-    orr x1, x1, (1 << 10) // AF = 1
-    orr x1, x1, (1 << 2)  // AttrIndx[1]
-    orr x1, x1, 0x1 // valida o bloco
-    str x1, [x0, 0] // L1[0]
-
-    // mapea RAM(0x40000000 - 0x7FFFFFFF) -> normal WBWA(Attr 0)
-    ldr x1, = 0x40000000
-    orr x1, x1, (1 << 10) // AF = 1
-    orr x1, x1, 0x1 // valida o bloco
-    str x1, [x0, 8] // L1[1]
-
-    // força os dados da tabela a sairem do cache e irem pra RAM fisica
-    dc cvac, x0                 
-    dsb sy
-    isb
-
-    // MAIR: Attr0=normal(0xFF), Attr1=ambiente(0x04)
-    ldr x1, = 0x04FF
-    msr mair_el1, x1
-
-    // TCR: T0SZ=25(39-bit VA), TG0=4KB
-    ldr x1, = 0x80803519
-    msr tcr_el1, x1
-
-    // TTBR0: aponta pra tabela
-    msr ttbr0_el1, x0
-
-    // invalida TLB
-    dsb sy
-    tlbi vmalle1is
-    dsb sy
-    isb
-
-    // ativa MMU no SCTLR_EL1
-    mrs x1, sctlr_el1
-    orr x1, x1, 0x1 // bit M(MMU Ativada)
-    bic x1, x1, (1 << 1) // desabilita checamento de alinhamento
-    msr sctlr_el1, x1
-    
-    isb
-
-    ldr x0, = debug_mmu
-    bl _escrever_tex
-
-    // epilogo
-    ldp x29, x30, [sp], 16
-    ret
+_svc_retorno_el1: //ponto de retorno depois do EL0
+    bl _iniciar_video
+    bl ns_abrir
 .section .rodata
-msg_kernel:  .asciz "[Kernel]: Executando, Sistema carregado com sucesso\r\n"
-debug_mmu:   .asciz "[MMU]: Tudo ocorreu bem, MMU ativada\r\n"
+msg_kernel: .asciz "[Kernel]: Executando, Sistema carregado com sucesso\r\n"

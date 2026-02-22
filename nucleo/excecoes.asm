@@ -278,3 +278,4 @@ msg_exc_configurado:
     .asciz "[EXC]: Vetores de exceção configurados\r\n"
 msg_nova_linha:
     .asciz "\r\n"
+    
